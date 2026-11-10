@@ -198,9 +198,6 @@ CALL sp_registrar_hipotesis('H32', 'Principiante', 'Gimnasio completo', NULL, NU
     '3 días/semana. Cuerpo completo alternando sesiones A/B: sentadilla en máquina Smith, press de pecho con mancuernas, jalón al pecho, peso muerto rumano con mancuernas livianas, remo en polea y plancha. 3x10-12, descansos de 60 s y aumento gradual de la carga cada semana manteniendo la técnica.');
 
 -- ---------------------------------------------------------------------
--- 4.4 Gránulos: las 48 reglas de producción del árbol se descomponen en
--- asociaciones hecho -> hipótesis con el peso base de su pregunta.
--- R01-R30 conservan la numeración del documento; R31-R48 completan la
 -- 4.4 Gránulos: las 48 reglas del árbol como asociaciones hecho -> hipótesis con peso.
 -- ---------------------------------------------------------------------
 CREATE TEMP TABLE reglas_origen (regla VARCHAR(5), hipotesis VARCHAR(5), condiciones TEXT);

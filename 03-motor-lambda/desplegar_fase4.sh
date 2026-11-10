@@ -77,7 +77,6 @@ if [ -z "$MODO" ] || [ "$MODO" = "--probar" ]; then
     aws cognito-idp admin-delete-user --user-pool-id "$POOL" --username "$PRUEBA" 2>/dev/null
   fi
   PSQL_OWNER -c "DELETE FROM se.consulta WHERE fecha_inicio >= '$INICIO';
-                 DELETE FROM se.validacion_experto WHERE fecha >= '$INICIO';
                  DELETE FROM se.usuario WHERE correo LIKE 'prueba-api-%';" \
     && log "    Listo (la auditoría conserva el registro de los cambios)"
 fi

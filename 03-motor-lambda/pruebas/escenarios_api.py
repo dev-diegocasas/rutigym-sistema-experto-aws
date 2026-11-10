@@ -1,5 +1,4 @@
 """Escenarios de la API por rol; corren en local (eventos simulados) o contra AWS."""
-
 import json
 import os
 import statistics
@@ -118,6 +117,16 @@ def correr_api(api, real=False):
                 {"de_acuerdo": True, "comentario": "Coincide con mi criterio"})
     res.check(st == 200 and v["validaciones"][-1]["experto"] == "cristian",
               "Cristian valida el diagnóstico (de acuerdo)", v)
+    st, v = api("POST", f"/consultas/{id_laura}/validacion", "profesor",
+                {"de_acuerdo": False, "comentario": "Yo bajaría el volumen"})
+    res.check(st == 200 and sorted(x["experto"] for x in v["validaciones"]) == ["cristian", "profesor"],
+              "Un segundo experto da su propia opinión sobre la misma consulta", v)
+    st, v = api("POST", f"/consultas/{id_laura}/validacion", "cristian", {"de_acuerdo": True, "comentario": "Sigo de acuerdo"})
+    res.check(st == 200 and len(v["validaciones"]) == 2, "Cristian corrige su opinión sin duplicarla", v)
+    st, b = api("GET", f"/consultas/{id_laura}", "laura", None)
+    res.check(st == 200 and "validaciones" not in b
+              and all(t["tipo"] != "validacion_experto" for t in b.get("traza", [])),
+              "Laura no ve las opiniones de los expertos", b.get("traza"))
     st, v = api("POST", f"/consultas/{id_laura}/validacion", "cristian", {"de_acuerdo": "sí"})
     res.check(st == 400, "Una validación mal formada se rechaza", st)
     st, m = api("GET", "/metricas", "cristian", None)

@@ -1,6 +1,5 @@
 """Prueba la API real por HTTPS con tokens de Cognito.
 Uso: python3 probar_api.py <ApiUrl> <ClienteWebId>"""
-
 import json
 import os
 import sys
@@ -55,7 +54,7 @@ def api(metodo, ruta, cuenta, cuerpo):
 if __name__ == "__main__":
     print("Despertando la base...", flush=True)
     print("  ", api("POST", "/despertar", None, None))
-    for cuenta in ("diego", "simon", "cristian", "laura", "andres"):
+    for cuenta in ("diego", "simon", "cristian", "profesor", "laura", "andres"):
         token(cuenta)
     print(f"   Sesiones iniciadas en Cognito: {len(_tokens)}")
     fallos, correo = correr_api(api, real=True)

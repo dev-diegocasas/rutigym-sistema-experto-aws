@@ -14,13 +14,8 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 -- ---------------------------------------------------------------------
--- Base de conocimiento
---   Usuario final: consultar (el motor la lee durante su consulta)
---   Experto, ingeniero, administrador: consultar
---   Ingeniero: crear, modificar y eliminar SOLO mediante procedimientos
---   (03_procedimientos.sql), que validan la coherencia del conocimiento
--- ---------------------------------------------------------------------
 -- Base de conocimiento: todos consultan; el ingeniero la cambia solo con procedimientos.
+-- ---------------------------------------------------------------------
 GRANT SELECT ON preguntas, hechos, respuesta_pregunta, hipotesis, hechos_hipotesis
    TO rol_usuario, rol_experto, rol_ingeniero_conocimiento, rol_administrador;
 
@@ -99,18 +94,21 @@ CREATE POLICY traza_acceso ON traza_inferencia FOR ALL
                         WHERE c.id_consulta = traza_inferencia.id_consulta));
 
 -- ---------------------------------------------------------------------
--- validacion_experto: solo el experto, y solo a su nombre
+-- Opinión del experto: fila de la traza (tipo validacion_experto), una por experto
 -- ---------------------------------------------------------------------
-GRANT SELECT, INSERT ON validacion_experto TO rol_experto;
-GRANT UPDATE (de_acuerdo, comentario, fecha) ON validacion_experto TO rol_experto;
-GRANT SELECT ON validacion_experto TO rol_ingeniero_conocimiento, rol_administrador;
-
-ALTER TABLE validacion_experto ENABLE ROW LEVEL SECURITY;
-CREATE POLICY validacion_propia ON validacion_experto FOR ALL TO rol_experto
-    USING (true)
-    WITH CHECK (id_experto = fn_usuario_actual());
-CREATE POLICY validacion_lectura ON validacion_experto FOR SELECT
-    TO rol_ingeniero_conocimiento, rol_administrador USING (true);
+GRANT UPDATE (detalle, fecha) ON traza_inferencia TO rol_experto;
+-- El usuario final no ve las opiniones del experto sobre su consulta
+CREATE POLICY traza_sin_opiniones ON traza_inferencia AS RESTRICTIVE FOR SELECT TO rol_usuario
+    USING (tipo <> 'validacion_experto');
+-- Solo el experto registra opiniones, y solo a su nombre
+CREATE POLICY traza_opinion_alta ON traza_inferencia AS RESTRICTIVE FOR INSERT
+    TO rol_usuario, rol_experto, rol_ingeniero_conocimiento
+    WITH CHECK (tipo <> 'validacion_experto'
+                OR (current_user = 'rol_experto'
+                    AND (detalle->>'id_experto')::INT = fn_usuario_actual()));
+CREATE POLICY traza_opinion_cambio ON traza_inferencia AS RESTRICTIVE FOR UPDATE TO rol_experto
+    USING (tipo = 'validacion_experto' AND (detalle->>'id_experto')::INT = fn_usuario_actual())
+    WITH CHECK (tipo = 'validacion_experto' AND (detalle->>'id_experto')::INT = fn_usuario_actual());
 
 -- ---------------------------------------------------------------------
 -- auditoria: solo lectura para el administrador; la escriben triggers

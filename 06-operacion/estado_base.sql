@@ -8,7 +8,7 @@ UNION ALL SELECT 'Regla «una consulta abierta» instalada',
        CASE WHEN EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'se'
                           AND indexname = 'ux_consulta_abierta') THEN 'sí' ELSE 'NO' END
 UNION ALL SELECT 'Filas de traza', count(*)::text FROM traza_inferencia
-UNION ALL SELECT 'Validaciones del experto', count(*)::text FROM validacion_experto
+UNION ALL SELECT 'Opiniones del experto', count(*)::text FROM traza_inferencia WHERE tipo = 'validacion_experto'
 UNION ALL SELECT 'Filas de auditoría', count(*)::text FROM auditoria
 UNION ALL SELECT 'Perfiles de usuario', count(*)::text FROM usuario
 UNION ALL SELECT 'Perfiles fuera de los 7 de demostración', count(*)::text FROM usuario

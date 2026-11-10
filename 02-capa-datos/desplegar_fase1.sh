@@ -69,7 +69,7 @@ if [ "$MODO" != "--verificar" ]; then
       || { log "Fallo en 00_preparacion.sql"; exit 1; }
     for f in sql/01_esquema.sql sql/02_permisos.sql sql/03_procedimientos.sql \
              sql/04_carga_conocimiento.sql sql/05_una_consulta_abierta.sql \
-             sql/06_roles_y_verificacion.sql; do
+             sql/06_roles_y_verificacion.sql sql/07_modelo_sin_ciclos.sql; do
       PGPASSWORD=$(token) PGOPTIONS='-c role=se_owner' $PSQL -f "$f" \
         && log "    $(basename "$f") OK" || { log "Fallo en $f"; exit 1; }
     done

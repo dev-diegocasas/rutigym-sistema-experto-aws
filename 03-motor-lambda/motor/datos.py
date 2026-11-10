@@ -1,5 +1,4 @@
 """CAPA DE DATOS · Acceso a Aurora: conexión IAM, transacción por rol y consultas granulares."""
-
 import os
 import ssl
 from contextlib import contextmanager
@@ -131,10 +130,11 @@ class Repositorio:
                            "FROM preguntas ORDER BY orden")
 
     def opciones(self):
-        return self._dicts("SELECT r.id_respuesta, r.id_pregunta, r.id_hecho, r.texto_opcion, "
+        # La pregunta de cada opción sale de su hecho
+        return self._dicts("SELECT r.id_respuesta, he.id_pregunta, r.id_hecho, r.texto_opcion, "
                            "r.sinonimos, r.orden, he.codigo AS codigo_hecho, he.valor "
                            "FROM respuesta_pregunta r JOIN hechos he ON he.id_hecho = r.id_hecho "
-                           "ORDER BY r.id_pregunta, r.orden")
+                           "ORDER BY he.id_pregunta, r.orden")
 
     def hipotesis(self):
         return self._dicts("SELECT id_hipotesis, codigo, nivel::TEXT AS nivel, equipo::TEXT AS equipo, "
@@ -197,14 +197,15 @@ class Repositorio:
                             c=id_consulta))
 
     def hechos_de_consulta(self, id_consulta):
-        return self._dicts("SELECT ch.paso, ch.id_pregunta, ch.id_hecho, ch.origen::TEXT AS origen, "
-                           "ch.texto_usuario FROM consulta_hecho ch "
+        return self._dicts("SELECT ch.paso, he.id_pregunta, ch.id_hecho, ch.origen::TEXT AS origen, "
+                           "ch.texto_usuario FROM consulta_hecho ch JOIN hechos he ON he.id_hecho = ch.id_hecho "
                            "WHERE ch.id_consulta = :c ORDER BY ch.paso", c=id_consulta)
 
     def registrar_hecho(self, id_consulta, paso, id_pregunta, id_hecho, origen, texto):
-        self.con.run("INSERT INTO consulta_hecho (id_consulta, paso, id_pregunta, id_hecho, origen, "
-                     "texto_usuario) VALUES (:c, :p, :q, :h, CAST(:o AS t_origen_respuesta), :t)",
-                     c=id_consulta, p=paso, q=id_pregunta, h=id_hecho, o=origen, t=texto)
+        # id_pregunta no se guarda: sale del hecho (la base impide responder dos veces la misma)
+        self.con.run("INSERT INTO consulta_hecho (id_consulta, paso, id_hecho, origen, texto_usuario) "
+                     "VALUES (:c, :p, :h, CAST(:o AS t_origen_respuesta), :t)",
+                     c=id_consulta, p=paso, h=id_hecho, o=origen, t=texto)
 
     def registrar_traza(self, id_consulta, paso, tipo, detalle):
         import json
@@ -214,7 +215,7 @@ class Repositorio:
 
     def traza(self, id_consulta):
         return self._dicts("SELECT paso, tipo::TEXT AS tipo, detalle, fecha FROM traza_inferencia "
-                           "WHERE id_consulta = :c ORDER BY id_traza", c=id_consulta)
+                           "WHERE id_consulta = :c AND tipo <> 'validacion_experto' ORDER BY id_traza", c=id_consulta)
 
     def guardar_diagnostico(self, id_consulta, ranking):
         for pos, fila in enumerate(ranking, start=1):
@@ -260,17 +261,27 @@ class Repositorio:
                              {"resultado": resultado, **detalle})
 
     # ------------------------------------------------------------ experto
+    # Opinión del experto: una fila de la traza por experto (tipo validacion_experto)
     def validar_diagnostico(self, id_consulta, id_experto, de_acuerdo, comentario):
-        self.con.run("INSERT INTO validacion_experto (id_consulta, id_experto, de_acuerdo, comentario) "
-                     "VALUES (:c, :e, :a, :t) ON CONFLICT (id_consulta, id_experto) DO UPDATE "
-                     "SET de_acuerdo = EXCLUDED.de_acuerdo, comentario = EXCLUDED.comentario, "
-                     "fecha = CURRENT_TIMESTAMP",
-                     c=id_consulta, e=id_experto, a=bool(de_acuerdo), t=comentario)
+        import json
+        paso = self._q("SELECT COALESCE(MAX(paso), 0) FROM consulta_hecho WHERE id_consulta = :c",
+                       c=id_consulta)[0][0]
+        detalle = json.dumps({"id_experto": id_experto, "de_acuerdo": bool(de_acuerdo),
+                              "comentario": comentario}, ensure_ascii=False)
+        self.con.run("INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                     "VALUES (:c, :p, 'validacion_experto', CAST(:d AS JSONB)) "
+                     "ON CONFLICT (id_consulta, ((detalle->>'id_experto')::INT)) "
+                     "WHERE tipo = 'validacion_experto' "
+                     "DO UPDATE SET detalle = EXCLUDED.detalle, fecha = CURRENT_TIMESTAMP",
+                     c=id_consulta, p=paso, d=detalle)
 
     def validaciones(self, id_consulta):
-        return self._dicts("SELECT u.alias AS experto, v.de_acuerdo, v.comentario, v.fecha "
-                           "FROM validacion_experto v JOIN usuario u ON u.id_usuario = v.id_experto "
-                           "WHERE v.id_consulta = :c ORDER BY v.fecha", c=id_consulta)
+        return self._dicts("SELECT u.alias AS experto, (t.detalle->>'de_acuerdo')::BOOLEAN AS de_acuerdo, "
+                           "t.detalle->>'comentario' AS comentario, t.fecha "
+                           "FROM traza_inferencia t "
+                           "JOIN usuario u ON u.id_usuario = (t.detalle->>'id_experto')::INT "
+                           "WHERE t.id_consulta = :c AND t.tipo = 'validacion_experto' "
+                           "ORDER BY t.fecha", c=id_consulta)
 
     def metricas(self):
         """Indicadores del sistema (la seguridad por fila decide qué consultas cuentan)."""
@@ -285,8 +296,10 @@ class Repositorio:
             "count(*) FILTER (WHERE verificacion_formal = 'INVALID') AS verificadas_invalid "
             "FROM consulta")[0]
         o = self._dicts(
-            "SELECT count(*) AS validaciones, count(*) FILTER (WHERE de_acuerdo) AS de_acuerdo, "
-            "count(DISTINCT id_consulta) AS consultas_con_opinion FROM validacion_experto")[0]
+            "SELECT count(*) AS validaciones, "
+            "count(*) FILTER (WHERE (detalle->>'de_acuerdo')::BOOLEAN) AS de_acuerdo, "
+            "count(DISTINCT id_consulta) AS consultas_con_opinion "
+            "FROM traza_inferencia WHERE tipo = 'validacion_experto'")[0]
         f.update(o)
         f["concordancia_experto"] = (round(f["de_acuerdo"] / f["validaciones"], 4)
                                      if f["validaciones"] else None)

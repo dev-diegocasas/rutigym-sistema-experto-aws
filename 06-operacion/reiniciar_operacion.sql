@@ -1,7 +1,7 @@
 -- Deja el sistema como recién instalado: sin consultas, sin auditoría y solo
 -- con los 7 perfiles de demostración. Los contadores vuelven a empezar en 1.
 SET search_path = se;
-TRUNCATE consulta_hecho, diagnostico_hipotesis, traza_inferencia, validacion_experto, consulta
+TRUNCATE consulta_hecho, diagnostico_hipotesis, traza_inferencia, consulta
          RESTART IDENTITY;
 DELETE FROM usuario
  WHERE correo NOT IN ('diego.admin@sistema-experto.test', 'simon.ingeniero@sistema-experto.test',

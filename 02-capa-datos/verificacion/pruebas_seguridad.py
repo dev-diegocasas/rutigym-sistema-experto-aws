@@ -1,6 +1,5 @@
 """Pruebas de seguridad por rol (permitido / denegado). Corre en una transacción que se deshace.
 Uso: python3 pruebas_seguridad.py local|aurora"""
-
 import sys
 
 from verificar_caminos import conectar
@@ -61,6 +60,7 @@ def main():
         for nombre, alias, rol in [("Diego", "diego", "administrador"),
                                    ("Simón", "simon", "ingeniero_conocimiento"),
                                    ("Cristian", "cristian", "experto"),
+                                   ("Profesor", "profesor", "experto"),
                                    ("Laura Prueba", "laura", "usuario_final"),
                                    ("Andrés Prueba", "andres", "usuario_final")]:
             fila = s.permitido(f"Administrador registra a {nombre} ({rol})",
@@ -86,19 +86,34 @@ def main():
                            u=ids["laura"])
         consulta_laura = fila[0][0] if fila else None
         s.permitido("Usuario final registra una respuesta en su consulta",
-                    "INSERT INTO consulta_hecho (id_consulta, paso, id_pregunta, id_hecho) "
-                    "SELECT :c, 1, id_pregunta, id_hecho FROM hechos WHERE codigo = 'HC01'",
+                    "INSERT INTO consulta_hecho (id_consulta, paso, id_hecho) "
+                    "SELECT :c, 1, id_hecho FROM hechos WHERE codigo = 'HC01'",
                     c=consulta_laura)
+        s.denegado("No se responde dos veces la misma pregunta (la pregunta sale del hecho)",
+                   "INSERT INTO consulta_hecho (id_consulta, paso, id_hecho) "
+                   "SELECT :c, 2, id_hecho FROM hechos WHERE codigo = 'HC02'",
+                   "ya se respondió", c=consulta_laura)
         s.denegado("Usuario final no puede tener dos consultas abiertas a la vez",
                    "INSERT INTO consulta (id_usuario) VALUES (:u)", "ux_consulta_abierta",
                    u=ids["laura"])
-        s.permitido("Usuario final descarta su consulta abierta",
-                    "UPDATE consulta SET estado = 'abandonada', fecha_fin = CURRENT_TIMESTAMP "
+        s.permitido("Usuario final termina su consulta",
+                    "UPDATE consulta SET estado = 'terminada', fecha_fin = CURRENT_TIMESTAMP "
                     "WHERE id_consulta = :c RETURNING id_consulta", lambda f: len(f) == 1,
                     c=consulta_laura)
         s.denegado("Una consulta cerrada no se puede volver a abrir",
                    "UPDATE consulta SET estado = 'en_curso', fecha_fin = NULL WHERE id_consulta = :c",
                    "ya está cerrada", c=consulta_laura)
+        fila = s.permitido("Usuario final abre otra consulta cuando cierra la anterior",
+                           "INSERT INTO consulta (id_usuario) VALUES (:u) RETURNING id_consulta",
+                           u=ids["laura"])
+        s.permitido("Usuario final descarta su consulta abierta",
+                    "UPDATE consulta SET estado = 'abandonada', fecha_fin = CURRENT_TIMESTAMP "
+                    "WHERE id_consulta = :c RETURNING id_consulta", lambda f: len(f) == 1,
+                    c=fila[0][0] if fila else None)
+        s.denegado("Usuario final no registra opiniones del experto",
+                   "INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                   "VALUES (:c, 1, 'validacion_experto', jsonb_build_object('id_experto', CAST(:u AS INT), 'de_acuerdo', true))",
+                   "row-level security", c=consulta_laura, u=ids["laura"])
         s.denegado("Usuario final no puede crear consultas a nombre de otro",
                    "INSERT INTO consulta (id_usuario) VALUES (:u)", "row-level security",
                    u=ids["andres"])
@@ -130,13 +145,36 @@ def main():
         s.denegado("Experto NO ve el correo de los usuarios",
                    "SELECT correo FROM usuario", "permission denied")
         s.permitido("Experto valida un diagnóstico a su nombre",
-                    "INSERT INTO validacion_experto (id_consulta, id_experto, de_acuerdo, comentario) "
-                    "VALUES (:c, :e, true, 'Coincide con mi criterio')",
+                    "INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                    "VALUES (:c, 1, 'validacion_experto', jsonb_build_object('id_experto', CAST(:e AS INT), "
+                    "'de_acuerdo', true, 'comentario', 'Coincide con mi criterio'))",
                     c=consulta_laura, e=ids["cristian"])
         s.denegado("Experto no puede validar a nombre de otro",
-                   "INSERT INTO validacion_experto (id_consulta, id_experto, de_acuerdo) "
-                   "VALUES (:c, :e, false)", "row-level security",
-                   c=consulta_laura, e=ids["simon"])
+                   "INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                   "VALUES (:c, 1, 'validacion_experto', jsonb_build_object('id_experto', CAST(:e AS INT), 'de_acuerdo', false))",
+                   "row-level security", c=consulta_laura, e=ids["simon"])
+        s.denegado("Una opinión por experto y consulta (la cambia, no la duplica)",
+                   "INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                   "VALUES (:c, 1, 'validacion_experto', jsonb_build_object('id_experto', CAST(:e AS INT), 'de_acuerdo', false))",
+                   "ux_traza_validacion", c=consulta_laura, e=ids["cristian"])
+        s.como("rol_experto", ids["profesor"], "profesor@prueba.local")
+        s.permitido("Un segundo experto da su propia opinión sobre la misma consulta",
+                    "INSERT INTO traza_inferencia (id_consulta, paso, tipo, detalle) "
+                    "VALUES (:c, 1, 'validacion_experto', jsonb_build_object('id_experto', CAST(:e AS INT), "
+                    "'de_acuerdo', false))", c=consulta_laura, e=ids["profesor"])
+        s.permitido("Un experto no cambia la opinión de otro (la fila no le aparece)",
+                    "UPDATE traza_inferencia SET detalle = detalle || '{\"de_acuerdo\": false}' "
+                    "WHERE tipo = 'validacion_experto' AND (detalle->>'id_experto')::INT = :e "
+                    "RETURNING id_traza", lambda f: len(f) == 0, e=ids["cristian"])
+        s.como("rol_experto", ids["cristian"], "cristian@prueba.local")
+        s.permitido("Experto ve las dos opiniones registradas",
+                    "SELECT count(*) FROM traza_inferencia WHERE tipo = 'validacion_experto' AND id_consulta = :c",
+                    lambda f: f[0][0] == 2, c=consulta_laura)
+        s.como("rol_usuario", ids["laura"], "laura@prueba.local", "prueba-laura")
+        s.permitido("El usuario final no ve la opinión del experto sobre su consulta",
+                    "SELECT count(*) FROM traza_inferencia WHERE tipo = 'validacion_experto' AND id_consulta = :c",
+                    lambda f: f[0][0] == 0, c=consulta_laura)
+        s.como("rol_experto", ids["cristian"], "cristian@prueba.local")
         s.denegado("Experto no puede modificar el conocimiento",
                    "CALL sp_asociar_hecho_hipotesis('HC07', 'H01', 0.5)", "permission denied")
         s.denegado("El validador de la base es del ingeniero (el experto solo consulta)",

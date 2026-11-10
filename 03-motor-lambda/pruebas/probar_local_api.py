@@ -1,6 +1,5 @@
 """Pruebas locales de la API (solo desarrollo): simula los eventos de API Gateway
 con los claims que pondría Cognito y usa dobles de los servicios de AWS."""
-
 import json
 import os
 import sys
@@ -13,7 +12,7 @@ os.environ.update(DB_MODO="local", DB_NOMBRE="prueba", DB_SOCKET="/var/tmp/pgtes
 import servicio  # noqa: E402
 from escenarios_api import correr_api  # noqa: E402
 
-GRUPO = {"diego": "administrador", "simon": "ingeniero_conocimiento", "cristian": "experto",
+GRUPO = {"diego": "administrador", "simon": "ingeniero_conocimiento", "cristian": "experto", "profesor": "experto",
          "laura": None, "andres": None}
 
 

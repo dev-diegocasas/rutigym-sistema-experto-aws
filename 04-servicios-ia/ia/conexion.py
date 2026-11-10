@@ -1,5 +1,4 @@
 """Conexión de solo lectura a la base de conocimiento para los scripts de la Fase 3."""
-
 import os
 import ssl
 import sys
@@ -37,7 +36,7 @@ def preguntas_y_opciones():
             p["opciones"] = [dict(zip(("codigo_hecho", "valor", "texto_opcion", "sinonimos"), f))
                              for f in con.run(
                 "SELECT he.codigo, he.valor, r.texto_opcion, r.sinonimos FROM respuesta_pregunta r "
-                "JOIN hechos he ON he.id_hecho = r.id_hecho WHERE r.id_pregunta = :p "
+                "JOIN hechos he ON he.id_hecho = r.id_hecho WHERE he.id_pregunta = :p "
                 "ORDER BY r.orden", p=p["id"])]
         hipotesis = [dict(zip(("codigo", "nivel", "equipo", "objetivo", "fase", "dias", "actividad"), f))
                      for f in con.run("SELECT codigo, nivel::TEXT, equipo::TEXT, objetivo::TEXT, "

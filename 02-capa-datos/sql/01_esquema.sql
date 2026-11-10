@@ -1,5 +1,5 @@
 -- =====================================================================
--- 01. Esquema: base de conocimiento (5 tablas) + sistema transaccional (7).
+-- 01. Esquema: base de conocimiento (5 tablas) + sistema transaccional (5) + auditoría técnica.
 -- =====================================================================
 SET client_encoding = 'UTF8';
 SET search_path = se;
@@ -19,7 +19,7 @@ CREATE TYPE t_rol_sistema     AS ENUM ('usuario_final','experto','ingeniero_cono
 CREATE TYPE t_estado_consulta AS ENUM ('en_curso','terminada','abandonada');
 CREATE TYPE t_origen_respuesta AS ENUM ('boton','texto_libre');
 CREATE TYPE t_tipo_traza      AS ENUM ('respuesta','seleccion_pregunta','conclusion',
-                                       'verificacion_formal');
+                                       'verificacion_formal','validacion_experto');
 
 -- =====================================================================
 -- 1. BASE DE CONOCIMIENTO
@@ -46,8 +46,7 @@ CREATE TABLE hechos (
     id_pregunta  INT          NOT NULL REFERENCES preguntas(id_pregunta),
     valor        VARCHAR(60)  NOT NULL,
     descripcion  VARCHAR(200) NULL,
-    CONSTRAINT uq_hecho_pregunta_valor UNIQUE (id_pregunta, valor),
-    CONSTRAINT uq_hecho_pregunta_id    UNIQUE (id_pregunta, id_hecho)
+    CONSTRAINT uq_hecho_pregunta_valor UNIQUE (id_pregunta, valor)
 );
 
 -- Opciones de respuesta de cada pregunta. Cada opción establece un hecho.
@@ -55,14 +54,11 @@ CREATE TABLE hechos (
 -- reconocer la opción cuando el usuario escribe texto libre.
 CREATE TABLE respuesta_pregunta (
     id_respuesta INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_pregunta  INT          NOT NULL,
-    id_hecho     INT          NOT NULL UNIQUE,
+    id_hecho     INT          NOT NULL UNIQUE,                 -- la pregunta se obtiene por el hecho
     texto_opcion VARCHAR(120) NOT NULL,
     sinonimos    TEXT[]       NOT NULL DEFAULT '{}',
     orden        INT          NOT NULL CHECK (orden > 0),
-    CONSTRAINT fk_respuesta_hecho FOREIGN KEY (id_pregunta, id_hecho)
-        REFERENCES hechos(id_pregunta, id_hecho) ON DELETE CASCADE,
-    CONSTRAINT uq_respuesta_orden UNIQUE (id_pregunta, orden)
+    CONSTRAINT fk_respuesta_hecho FOREIGN KEY (id_hecho) REFERENCES hechos(id_hecho) ON DELETE CASCADE
 );
 
 -- Hipótesis: las rutinas que el sistema puede concluir.
@@ -79,9 +75,6 @@ CREATE TABLE hipotesis (
     probabilidad_previa NUMERIC(5,4) NOT NULL DEFAULT 1 CHECK (probabilidad_previa > 0)
 );
 
--- Gránulos de conocimiento: relación muchos a muchos entre hechos e
--- hipótesis. peso = grado de certeza con que el hecho respalda la
--- hipótesis. Si el usuario afirma un hecho de la misma pregunta que NO
 -- Gránulos: hecho -> hipótesis con peso (certeza con que el hecho la respalda).
 CREATE TABLE hechos_hipotesis (
     id_hecho     INT          NOT NULL REFERENCES hechos(id_hecho),
@@ -124,15 +117,13 @@ CREATE INDEX ix_consulta_usuario ON consulta (id_usuario, fecha_inicio DESC);
 CREATE TABLE consulta_hecho (
     id_consulta   INT                NOT NULL REFERENCES consulta(id_consulta) ON DELETE CASCADE,
     paso          SMALLINT           NOT NULL CHECK (paso > 0),
-    id_pregunta   INT                NOT NULL,
-    id_hecho      INT                NOT NULL,
+    id_hecho      INT                NOT NULL,                 -- la pregunta sale del hecho
     origen        t_origen_respuesta NOT NULL DEFAULT 'boton',
     texto_usuario VARCHAR(300)       NULL,                     -- frase interpretada por Lex
     fecha         TIMESTAMPTZ        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id_consulta, paso),
-    CONSTRAINT uq_consulta_pregunta UNIQUE (id_consulta, id_pregunta),  -- una respuesta por pregunta
-    CONSTRAINT fk_consulta_hecho FOREIGN KEY (id_pregunta, id_hecho)
-        REFERENCES hechos(id_pregunta, id_hecho)
+    CONSTRAINT uq_consulta_hecho UNIQUE (id_consulta, id_hecho),  -- una por pregunta: tr_una_respuesta_por_pregunta
+    CONSTRAINT fk_consulta_hecho FOREIGN KEY (id_hecho) REFERENCES hechos(id_hecho)
 );
 
 -- Resultado: las 5 hipótesis más probables de una consulta terminada.
@@ -155,19 +146,11 @@ CREATE TABLE traza_inferencia (
     fecha       TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX ix_traza_consulta ON traza_inferencia (id_consulta, paso);
+-- Opinión del experto: un registro por experto y consulta (varios expertos, sin tabla extra)
+CREATE UNIQUE INDEX ux_traza_validacion ON traza_inferencia (id_consulta, ((detalle->>'id_experto')::INT))
+    WHERE tipo = 'validacion_experto';
 
--- Juicio del experto humano sobre un diagnóstico (concordancia).
-CREATE TABLE validacion_experto (
-    id_validacion INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_consulta   INT          NOT NULL REFERENCES consulta(id_consulta) ON DELETE CASCADE,
-    id_experto    INT          NOT NULL REFERENCES usuario(id_usuario),
-    de_acuerdo    BOOLEAN      NOT NULL,
-    comentario    VARCHAR(500) NULL,
-    fecha         TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_validacion UNIQUE (id_consulta, id_experto)
-);
-
--- Registro de cambios en el conocimiento y en los roles (lo llenan triggers).
+-- Registro técnico de cambios (lo llenan triggers). Fuera del modelo conceptual.
 CREATE TABLE auditoria (
     id_auditoria BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     fecha        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
