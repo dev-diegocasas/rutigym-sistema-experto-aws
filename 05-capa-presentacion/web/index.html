@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rutigym</title>
+  <meta name="description" content="Rutinas de entrenamiento personalizadas a partir del conocimiento de un experto, con el razonamiento visible paso a paso.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="data:,">
+  <link rel="preload" href="fuentes/archivo-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fuentes/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <a class="saltar" href="#vista">Saltar al contenido</a>
+
+  <header class="barra" id="barra" hidden>
+    <div class="barra-interior">
+      <div class="marca">Rutigym</div>
+      <nav id="menu" aria-label="Secciones"></nav>
+      <div class="sesion">
+        <div class="quien" id="quien"></div>
+        <button class="salir" id="salir" type="button" aria-label="Cerrar sesión" title="Cerrar sesión">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="vista" tabindex="-1">
+    <p class="cargando">Cargando…</p>
+  </main>
+
+  <div id="avisos" role="status" aria-live="polite"></div>
+
+  <noscript><p class="vacio">Esta aplicación necesita JavaScript activado.</p></noscript>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

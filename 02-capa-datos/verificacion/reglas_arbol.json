@@ -1,0 +1,1122 @@
+[
+[
+"R01",
+"H01",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R02",
+"H02",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R03",
+"H01",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R04",
+"H02",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R05",
+"H01",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R06",
+"H02",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R07",
+"H03",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Fuerza"
+]
+]
+],
+[
+"R08",
+"H04",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+]
+]
+],
+[
+"R09",
+"H05",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Resistencia"
+]
+]
+],
+[
+"R10",
+"H06",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Pérdida de grasa"
+]
+]
+],
+[
+"R11",
+"H07",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Rendimiento deportivo"
+]
+]
+],
+[
+"R12",
+"H08",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Fuerza"
+]
+]
+],
+[
+"R13",
+"H09",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+]
+]
+],
+[
+"R14",
+"H10",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Resistencia"
+]
+]
+],
+[
+"R15",
+"H11",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Pérdida de grasa"
+]
+]
+],
+[
+"R16",
+"H12",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"6 meses a 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Rendimiento deportivo"
+]
+]
+],
+[
+"R17",
+"H13",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Fuerza"
+],
+[
+"fase_priorizada",
+"Volumen"
+]
+]
+],
+[
+"R18",
+"H14",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Fuerza"
+],
+[
+"fase_priorizada",
+"Intensidad"
+]
+]
+],
+[
+"R19",
+"H15",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+],
+[
+"fase_priorizada",
+"Volumen"
+]
+]
+],
+[
+"R20",
+"H16",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+],
+[
+"fase_priorizada",
+"Intensidad"
+]
+]
+],
+[
+"R21",
+"H17",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Resistencia"
+]
+]
+],
+[
+"R22",
+"H18",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Pérdida de grasa"
+]
+]
+],
+[
+"R23",
+"H19",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"objetivo_principal",
+"Rendimiento deportivo"
+]
+]
+],
+[
+"R24",
+"H20",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Fuerza"
+],
+[
+"fase_priorizada",
+"Volumen"
+]
+]
+],
+[
+"R25",
+"H21",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Fuerza"
+],
+[
+"fase_priorizada",
+"Intensidad"
+]
+]
+],
+[
+"R26",
+"H22",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+],
+[
+"fase_priorizada",
+"Volumen"
+]
+]
+],
+[
+"R27",
+"H23",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Hipertrofia"
+],
+[
+"fase_priorizada",
+"Intensidad"
+]
+]
+],
+[
+"R28",
+"H24",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Resistencia"
+]
+]
+],
+[
+"R29",
+"H25",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Pérdida de grasa"
+]
+]
+],
+[
+"R30",
+"H26",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Más de 2 años"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"objetivo_principal",
+"Rendimiento deportivo"
+]
+]
+],
+[
+"R31",
+"H27",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R32",
+"H28",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R33",
+"H29",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R34",
+"H30",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R35",
+"H31",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R36",
+"H32",
+[
+[
+"tecnica_dominada",
+"No"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R37",
+"H27",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R38",
+"H28",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R39",
+"H29",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R40",
+"H30",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R41",
+"H31",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R42",
+"H32",
+[
+[
+"tecnica_dominada",
+"No estoy seguro"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R43",
+"H27",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R44",
+"H28",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R45",
+"H29",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Básico o en casa"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R46",
+"H30",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Sedentario"
+]
+]
+],
+[
+"R47",
+"H31",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"2 días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+],
+[
+"R48",
+"H32",
+[
+[
+"tecnica_dominada",
+"Sí"
+],
+[
+"tiempo_entrenando",
+"Menos de 6 meses"
+],
+[
+"equipo_disponible",
+"Gimnasio completo"
+],
+[
+"dias_semana",
+"3 o más días"
+],
+[
+"actividad_actual",
+"Algo activo"
+]
+]
+]
+]

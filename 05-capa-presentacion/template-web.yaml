@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Sistema experto de rutinas - interfaz web: bucket S3 privado servido solo a
+  través de CloudFront (HTTPS, compresión, caché y cabeceras de seguridad).
+
+Parameters:
+  ApiUrl:
+    Type: String
+    Description: URL de la API (se permite en la política de seguridad de contenido)
+
+Resources:
+  BucketWeb:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:          # nadie accede directo al bucket
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  AccesoOrigen:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "se-rutinas-web-${AWS::StackName}"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CabecerasSeguridad:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "se-rutinas-seguridad-${AWS::StackName}"
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: !Sub >-
+              default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self';
+              img-src 'self' data:; connect-src 'self' ${ApiUrl} https://cognito-idp.${AWS::Region}.amazonaws.com;
+              frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+          StrictTransportSecurity:
+            Override: true
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            Override: true
+            FrameOption: DENY
+          ReferrerPolicy:
+            Override: true
+            ReferrerPolicy: strict-origin-when-cross-origin
+
+  Distribucion:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Sistema experto de rutinas de entrenamiento
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100              # solo las ubicaciones más económicas
+        Origins:
+          - Id: s3-web
+            DomainName: !GetAtt BucketWeb.RegionalDomainName
+            OriginAccessControlId: !GetAtt AccesoOrigen.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: s3-web
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          Compress: true                         # gzip/brotli: transfiere ~4 veces menos
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6      # Managed-CachingOptimized
+          ResponseHeadersPolicyId: !Ref CabecerasSeguridad
+
+  PoliticaBucket:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketWeb
+      PolicyDocument:
+        Statement:
+          - Sid: SoloCloudFront
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${BucketWeb.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribucion}"
+
+Outputs:
+  BucketWeb:
+    Value: !Ref BucketWeb
+  DistribucionId:
+    Value: !Ref Distribucion
+  UrlWeb:
+    Value: !Sub "https://${Distribucion.DomainName}"

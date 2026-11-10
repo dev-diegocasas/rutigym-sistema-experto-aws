@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Sistema experto de rutinas de entrenamiento - servicio seguro: Amazon Cognito
+  (identidad y roles), API Gateway HTTP API con autorizador JWT y el motor de
+  inferencia en Lambda con Amazon Lex, Bedrock Nova y Automated Reasoning.
+
+Parameters:
+  DbHost:
+    Type: String
+    Description: Endpoint del clúster Aurora (se-rutinas-db)
+  DbResourceId:
+    Type: String
+    Description: Identificador de recurso del clúster (para el permiso rds-db:connect)
+  OrigenWeb:
+    Type: String
+    Default: "*"
+    Description: Origen permitido por CORS (en la Fase 5 se restringe al dominio de CloudFront)
+
+Resources:
+  # ------------------------------------------------------------ Identidad
+  GrupoUsuarios:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: se-rutinas-usuarios
+      UserPoolTier: LITE
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: true
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 10
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false      # los usuarios finales se registran solos
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: Código de verificación · Sistema experto de rutinas
+        EmailMessage: "Tu código de verificación es {####}"
+      UsernameConfiguration:
+        CaseSensitive: false
+      DeletionProtection: INACTIVE
+
+  ClienteWeb:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: se-rutinas-web
+      UserPoolId: !Ref GrupoUsuarios
+      GenerateSecret: false                 # aplicación de navegador: no guarda secretos
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED   # no revela si un correo está registrado
+      EnableTokenRevocation: true
+      IdTokenValidity: 60
+      AccessTokenValidity: 60
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        IdToken: minutes
+        AccessToken: minutes
+        RefreshToken: days
+      ReadAttributes: [email, email_verified, name]
+      WriteAttributes: [email, name]
+
+  GrupoExperto:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: experto
+      Description: Experto humano (consulta y valida; no modifica la base)
+      UserPoolId: !Ref GrupoUsuarios
+      Precedence: 3
+  GrupoIngeniero:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: ingeniero_conocimiento
+      Description: Ingeniero del conocimiento (mantiene hechos, hipótesis y gránulos)
+      UserPoolId: !Ref GrupoUsuarios
+      Precedence: 2
+  GrupoAdministrador:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: administrador
+      Description: Administrador (gestiona usuarios y roles; consulta la auditoría)
+      UserPoolId: !Ref GrupoUsuarios
+      Precedence: 1
+  GrupoUsuarioFinal:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: usuario_final
+      Description: Usuario final (los que se registran solos no necesitan grupo)
+      UserPoolId: !Ref GrupoUsuarios
+      Precedence: 4
+
+  # ------------------------------------------------------------ API pública
+  ApiSistemaExperto:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: API del sistema experto de rutinas de entrenamiento
+      CorsConfiguration:
+        AllowOrigins: [!Ref OrigenWeb]
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [Authorization, Content-Type]
+        MaxAge: 600
+      DefaultRouteSettings:                 # protege contra abuso y cobros inesperados
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+      Auth:
+        DefaultAuthorizer: TokenCognito
+        Authorizers:
+          TokenCognito:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${GrupoUsuarios}"
+              audience:
+                - !Ref ClienteWeb
+
+  # ------------------------------------------------------------ Motor de inferencia
+  FuncionMotorInferencia:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: se-motor-inferencia
+      Description: Motor de inferencia probabilístico del sistema experto
+      CodeUri: build/
+      Handler: servicio.lambda_handler
+      Runtime: python3.12
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 29            # API Gateway corta a los 30 s; cubre la reanudación de Aurora (~18 s)
+      Environment:
+        Variables:
+          DB_HOST: !Ref DbHost
+          COGNITO_POOL_ID: !Ref GrupoUsuarios
+          USAR_LEX: "true"
+          USAR_NOVA: "true"
+          USAR_AR: "true"
+          LEX_BOT: se-rutinas-nlu
+          LEX_ALIAS: produccion
+          MODELO_NOVA: amazon.nova-micro-v1:0
+          GUARDRAIL: se-rutinas-verificador
+      Events:
+        Despertar:                           # única ruta pública: despierta la base antes del login
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiSistemaExperto
+            Path: /despertar
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        Preflight:                           # consultas previas de CORS: no llevan token
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiSistemaExperto
+            Path: /{proxy+}
+            Method: OPTIONS
+            Auth:
+              Authorizer: NONE
+        Api:                                 # todas las demás rutas exigen token de Cognito
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiSistemaExperto
+            Path: /{proxy+}
+            Method: ANY
+      Policies:
+        - Statement:
+            - Sid: ConectarAuroraComoAppLambda
+              Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DbResourceId}/app_lambda"
+            - Sid: LexInterpretarTexto
+              Effect: Allow
+              Action: lex:RecognizeText
+              Resource: !Sub "arn:aws:lex:${AWS::Region}:${AWS::AccountId}:bot-alias/*/*"
+            - Sid: LexUbicarBot
+              Effect: Allow
+              Action: [lex:ListBots, lex:ListBotAliases]
+              Resource: "*"
+            - Sid: NovaRedactar
+              Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0"
+            - Sid: VerificacionFormal
+              Effect: Allow
+              Action: [bedrock:ApplyGuardrail, bedrock:GetGuardrail, bedrock:ListGuardrails,
+                       bedrock:InvokeAutomatedReasoningPolicy]
+              Resource: "*"
+            - Sid: GestionCuentasCognito
+              Effect: Allow
+              Action: [cognito-idp:AdminCreateUser, cognito-idp:AdminDeleteUser,
+                       cognito-idp:AdminAddUserToGroup, cognito-idp:AdminRemoveUserFromGroup,
+                       cognito-idp:AdminDisableUser, cognito-idp:AdminEnableUser,
+                       cognito-idp:AdminUserGlobalSignOut]
+              Resource: !GetAtt GrupoUsuarios.Arn
+
+  RegistrosMotor:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/se-motor-inferencia
+      RetentionInDays: 7
+
+Outputs:
+  ApiUrl:
+    Description: URL base de la API del sistema experto
+    Value: !Sub "https://${ApiSistemaExperto}.execute-api.${AWS::Region}.amazonaws.com"
+  UserPoolId:
+    Value: !Ref GrupoUsuarios
+  ClienteWebId:
+    Value: !Ref ClienteWeb
+  FuncionMotor:
+    Value: !Ref FuncionMotorInferencia
