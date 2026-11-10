@@ -34,17 +34,25 @@ Dentro de la Lambda se repite la misma separación: `servicio.py` no calcula ni 
 
 El código está documentado por bloques: cada archivo empieza con una línea que dice qué hace y en qué capa está, y cada grupo de funciones tiene un encabezado corto.
 
+## Modelo de datos
+
+- **Base de conocimiento (5 tablas):** `preguntas` 1–N `hechos`; `hechos` 1–1 `respuesta_pregunta`; `hechos` N–M `hipotesis` mediante `hechos_hipotesis` (gránulos con peso).
+- **Sistema transaccional (5 tablas):** `usuario` 1–N `consulta`; `consulta` 1–N `consulta_hecho`, `diagnostico_hipotesis` y `traza_inferencia`.
+- **Sin relaciones redundantes:** ninguna tabla guarda una llave que se obtiene por otra relación. La pregunta de una opción o de una respuesta sale de su hecho.
+- **Varios expertos por consulta:** cada opinión es una fila de `traza_inferencia` (tipo `validacion_experto`), única por experto. No hace falta otra tabla y no se forma un ciclo `usuario`–`consulta`–`validación`.
+- **`auditoria`:** es un registro técnico de cambios que llenan los disparadores. Queda fuera del modelo conceptual.
+
 ## Carpetas
 
 | Carpeta | Capa o función | Despliega |
 |---|---|---|
 | `01-infraestructura-aurora/` | Infraestructura base | Clúster Aurora PostgreSQL Serverless (`se-rutinas-db`) y pruebas de viabilidad de Lex y Bedrock |
-| `02-capa-datos/` | **Datos** | Roles, esquema, permisos por rol, procedimientos, carga del conocimiento (7 preguntas, 19 hechos, 32 hipótesis, 160 gránulos) y migraciones 05 y 06. Verificación de las 48 reglas y las 720 combinaciones, y pruebas de seguridad |
+| `02-capa-datos/` | **Datos** | Roles, esquema, permisos por rol, procedimientos, carga del conocimiento (7 preguntas, 19 hechos, 32 hipótesis, 160 gránulos) y migraciones 05 a 07. Verificación de las 48 reglas y las 720 combinaciones, y pruebas de seguridad |
 | `03-motor-lambda/` | **Lógica** (y acceso a datos) | Lambda, API Gateway HTTP API con autorizador JWT y Cognito con 4 grupos (`template.yaml`, pila `se-rutinas-motor`). Cuentas de demostración y pruebas |
 | `04-servicios-ia/` | Servicios de IA | Bot de Amazon Lex (`se-rutinas-nlu`), política de Automated Reasoning (`se-rutinas-reglas-experto`) y guardrail (`se-rutinas-verificador`) |
 | `05-capa-presentacion/` | **Presentación** | Página Rutigym en S3 + CloudFront (`template-web.yaml`, pila `se-rutinas-web`) |
 | `06-operacion/` | Operación | Reinicio para la demostración, limpieza de sobrantes en la nube y estado de la base |
-| `docs/` | Documentación | Estado del proyecto, árbol de decisión (Mermaid y PNG) |
+| `docs/` | Documentación | Estado del proyecto, árbol de decisión (Mermaid y PNG), diagrama de flujo de datos del proceso de consulta y modelo relacional para MySQL Workbench (`MR_rutigym_workbench.sql`) |
 
 ### Archivos del motor (`03-motor-lambda/motor`)
 
@@ -95,9 +103,9 @@ La fase 2 (el primer motor sin API pública) quedó reemplazada por la fase 4 y 
 | Prueba | Archivo | Resultado |
 |---|---|---|
 | Caminos del árbol | `02-capa-datos/verificacion/verificar_caminos.py` | 48 reglas, 720 combinaciones, 32/32 hipótesis alcanzables |
-| Seguridad por rol en la base | `02-capa-datos/verificacion/pruebas_seguridad.py` | 45/45 |
+| Seguridad por rol en la base | `02-capa-datos/verificacion/pruebas_seguridad.py` | 55/55 |
 | Motor contra PostgreSQL local | `03-motor-lambda/pruebas/probar_local.py` | 68/68 |
-| API (eventos de API Gateway) | `03-motor-lambda/pruebas/probar_local_api.py` | 45/45 |
+| API (eventos de API Gateway) | `03-motor-lambda/pruebas/probar_local_api.py` | 48/48 |
 | Servicios de IA con dobles de prueba | `probar_local_ia.py` | 16/16 |
 | Negaciones escritas | `probar_local_negacion.py` | 12/12 |
-| Servicios reales (Lex, Nova y Cognito) | `probar_api.py`, `probar_ajuste6.py`, `probar_ajuste7.py`, `probar_ajuste8.py` | Se corren en CloudShell |
+| Servicios reales (Lex, Nova y Cognito) | `probar_api.py`, `probar_ajuste6.py` … `probar_ajuste9.py` | Se corren en CloudShell |

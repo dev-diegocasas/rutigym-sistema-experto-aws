@@ -24,16 +24,11 @@ CREATE TRIGGER tr_verificacion_definitiva BEFORE UPDATE OF verificacion_formal, 
     FOR EACH ROW EXECUTE FUNCTION fn_verificacion_definitiva();
 
 -- ---------------------------------------------------------------------
--- Alias legibles: los perfiles creados al registrarse tenían un alias al azar
--- («usuario-c47814»). Ahora el alias sale del nombre de registro: primer nombre
--- e inicial del apellido («Juan Pérez» -> juan.p), con un número si se repite.
--- El alias no es la llave (la llave es id_usuario), así que cambiarlo no afecta
--- consultas ni validaciones.
+-- Alias legibles desde el nombre («Juan Pérez» -> juan.p); corrige los alias al azar.
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE
     r RECORD; v_palabras TEXT[]; v_base TEXT; v_alias TEXT; n INT;
--- Alias legibles desde el nombre («Juan Pérez» -> juan.p); corrige los alias al azar.
 BEGIN
     FOR r IN SELECT id_usuario, nombre, correo FROM usuario
               WHERE alias ~ '^usuario-[0-9a-f]{6}$' ORDER BY id_usuario LOOP

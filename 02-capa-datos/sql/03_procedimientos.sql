@@ -1,17 +1,12 @@
 -- =====================================================================
--- 03. Procedimientos del ingeniero, validador y auditoría. Ejecutar como se_owner.
+-- 03. Procedimientos del ingeniero, validador, reglas de la consulta y auditoría. Re-ejecutable.
 -- =====================================================================
 SET search_path = se;
 
 -- ---------------------------------------------------------------------
--- Coherencia de un gránulo (hecho -> hipótesis) con el perfil de la
--- hipótesis. Devuelve NULL si es coherente o el motivo si no lo es.
--- Reglas de dominio dadas por el experto (no son reglas de inferencia):
--- cada nivel corresponde a un tiempo de entrenamiento, y Intermedio y
--- Avanzado exigen dominar la técnica.
--- ---------------------------------------------------------------------
 -- Coherencia de un gránulo con su hipótesis: NULL si es coherente, o el motivo.
-CREATE FUNCTION fn_coherencia(p_id_hecho INT, p_id_hipotesis INT) RETURNS TEXT
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION fn_coherencia(p_id_hecho INT, p_id_hipotesis INT) RETURNS TEXT
 LANGUAGE plpgsql STABLE AS $$
 DECLARE
     v_atributo TEXT;
@@ -57,7 +52,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- Hechos y opciones de respuesta (se registran juntos)
 -- ---------------------------------------------------------------------
-CREATE PROCEDURE sp_registrar_hecho(
+CREATE OR REPLACE PROCEDURE sp_registrar_hecho(
     p_codigo VARCHAR, p_pregunta VARCHAR, p_valor VARCHAR, p_texto_opcion VARCHAR,
     p_sinonimos TEXT[], p_orden INT, p_descripcion VARCHAR DEFAULT NULL)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
@@ -95,8 +90,8 @@ BEGIN
 
     -- Un sinónimo no puede servir para dos opciones de la misma pregunta
     SELECT s INTO v_choque
-      FROM respuesta_pregunta r, unnest(r.sinonimos) s
-     WHERE r.id_pregunta = v_id_pregunta AND r.id_hecho <> v_id_hecho
+      FROM respuesta_pregunta r JOIN hechos he ON he.id_hecho = r.id_hecho, unnest(r.sinonimos) s
+     WHERE he.id_pregunta = v_id_pregunta AND r.id_hecho <> v_id_hecho
        AND s = ANY (v_sinonimos)
      LIMIT 1;
     IF v_choque IS NOT NULL THEN
@@ -104,15 +99,22 @@ BEGIN
                         p_codigo, v_choque, p_pregunta;
     END IF;
 
-    INSERT INTO respuesta_pregunta (id_pregunta, id_hecho, texto_opcion, sinonimos, orden)
-    VALUES (v_id_pregunta, v_id_hecho, btrim(p_texto_opcion), v_sinonimos, p_orden)
+    -- Dos opciones de la misma pregunta no comparten posición
+    IF EXISTS (SELECT 1 FROM respuesta_pregunta r JOIN hechos he ON he.id_hecho = r.id_hecho
+                WHERE he.id_pregunta = v_id_pregunta AND r.id_hecho <> v_id_hecho
+                  AND r.orden = p_orden) THEN
+        RAISE EXCEPTION 'Hecho %: otra opción de % ya usa el orden %', p_codigo, p_pregunta, p_orden;
+    END IF;
+
+    INSERT INTO respuesta_pregunta (id_hecho, texto_opcion, sinonimos, orden)
+    VALUES (v_id_hecho, btrim(p_texto_opcion), v_sinonimos, p_orden)
     ON CONFLICT (id_hecho) DO UPDATE
        SET texto_opcion = EXCLUDED.texto_opcion, sinonimos = EXCLUDED.sinonimos,
            orden = EXCLUDED.orden;
 END;
 $$;
 
-CREATE PROCEDURE sp_eliminar_hecho(p_codigo VARCHAR)
+CREATE OR REPLACE PROCEDURE sp_eliminar_hecho(p_codigo VARCHAR)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 DECLARE v_id INT;
@@ -135,7 +137,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- Preguntas: el ingeniero ajusta textos y peso base (no crea ni borra)
 -- ---------------------------------------------------------------------
-CREATE PROCEDURE sp_actualizar_pregunta(
+CREATE OR REPLACE PROCEDURE sp_actualizar_pregunta(
     p_codigo VARCHAR, p_texto VARCHAR, p_ayuda VARCHAR, p_peso_base NUMERIC,
     p_aplicar_peso_a_granulos BOOLEAN DEFAULT FALSE)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
@@ -162,7 +164,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- Hipótesis
 -- ---------------------------------------------------------------------
-CREATE PROCEDURE sp_registrar_hipotesis(
+CREATE OR REPLACE PROCEDURE sp_registrar_hipotesis(
     p_codigo VARCHAR, p_nivel t_nivel, p_equipo t_equipo, p_objetivo t_objetivo,
     p_fase t_fase, p_dias_semana t_dias_semana, p_actividad t_actividad,
     p_descripcion TEXT, p_probabilidad_previa NUMERIC DEFAULT 1)
@@ -218,7 +220,7 @@ BEGIN
 END;
 $$;
 
-CREATE PROCEDURE sp_eliminar_hipotesis(p_codigo VARCHAR)
+CREATE OR REPLACE PROCEDURE sp_eliminar_hipotesis(p_codigo VARCHAR)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 DECLARE v_id INT;
@@ -239,7 +241,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- Gránulos (hechos_hipotesis)
 -- ---------------------------------------------------------------------
-CREATE PROCEDURE sp_asociar_hecho_hipotesis(
+CREATE OR REPLACE PROCEDURE sp_asociar_hecho_hipotesis(
     p_hecho VARCHAR, p_hipotesis VARCHAR, p_peso NUMERIC DEFAULT NULL)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
@@ -274,7 +276,7 @@ BEGIN
 END;
 $$;
 
-CREATE PROCEDURE sp_desasociar_hecho_hipotesis(p_hecho VARCHAR, p_hipotesis VARCHAR)
+CREATE OR REPLACE PROCEDURE sp_desasociar_hecho_hipotesis(p_hecho VARCHAR, p_hipotesis VARCHAR)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 DECLARE
@@ -301,14 +303,15 @@ $$;
 -- Validador estructural de la base de conocimiento.
 -- (La alcanzabilidad de cada hipótesis la comprueba el motor, Fase 2.)
 -- ---------------------------------------------------------------------
-CREATE FUNCTION fn_validar_base()
+CREATE OR REPLACE FUNCTION fn_validar_base()
 RETURNS TABLE (prueba TEXT, resultado TEXT, detalle TEXT)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 DECLARE v TEXT;
 BEGIN
     SELECT string_agg(p.codigo, ', ') INTO v FROM preguntas p
-     WHERE (SELECT count(*) FROM respuesta_pregunta r WHERE r.id_pregunta = p.id_pregunta) < 2;
+     WHERE (SELECT count(*) FROM respuesta_pregunta r JOIN hechos he ON he.id_hecho = r.id_hecho
+             WHERE he.id_pregunta = p.id_pregunta) < 2;
     RETURN QUERY SELECT 'Cada pregunta tiene al menos 2 opciones',
         CASE WHEN v IS NULL THEN 'OK' ELSE 'FALLO' END, COALESCE('Sin opciones: ' || v, '');
 
@@ -344,8 +347,9 @@ BEGIN
         CASE WHEN v IS NULL THEN 'OK' ELSE 'FALLO' END, COALESCE('Iguales: ' || v, '');
 
     SELECT string_agg(DISTINCT s, ', ') INTO v FROM (
-        SELECT r.id_pregunta, s FROM respuesta_pregunta r, unnest(r.sinonimos) s
-         GROUP BY r.id_pregunta, s HAVING count(DISTINCT r.id_hecho) > 1) d;
+        SELECT he.id_pregunta, s FROM respuesta_pregunta r JOIN hechos he ON he.id_hecho = r.id_hecho,
+               unnest(r.sinonimos) s
+         GROUP BY he.id_pregunta, s HAVING count(DISTINCT r.id_hecho) > 1) d;
     RETURN QUERY SELECT 'Ningún sinónimo apunta a dos opciones de una pregunta',
         CASE WHEN v IS NULL THEN 'OK' ELSE 'FALLO' END, COALESCE('Ambiguos: ' || v, '');
 
@@ -360,7 +364,7 @@ $$;
 -- ---------------------------------------------------------------------
 -- Auditoría automática de la base de conocimiento y de los roles
 -- ---------------------------------------------------------------------
-CREATE FUNCTION fn_auditar() RETURNS TRIGGER
+CREATE OR REPLACE FUNCTION fn_auditar() RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 BEGIN
@@ -374,19 +378,19 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER tr_auditar_preguntas AFTER INSERT OR UPDATE OR DELETE ON preguntas
+CREATE OR REPLACE TRIGGER tr_auditar_preguntas AFTER INSERT OR UPDATE OR DELETE ON preguntas
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_hechos AFTER INSERT OR UPDATE OR DELETE ON hechos
+CREATE OR REPLACE TRIGGER tr_auditar_hechos AFTER INSERT OR UPDATE OR DELETE ON hechos
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_respuestas AFTER INSERT OR UPDATE OR DELETE ON respuesta_pregunta
+CREATE OR REPLACE TRIGGER tr_auditar_respuestas AFTER INSERT OR UPDATE OR DELETE ON respuesta_pregunta
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_hipotesis AFTER INSERT OR UPDATE OR DELETE ON hipotesis
+CREATE OR REPLACE TRIGGER tr_auditar_hipotesis AFTER INSERT OR UPDATE OR DELETE ON hipotesis
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_granulos AFTER INSERT OR UPDATE OR DELETE ON hechos_hipotesis
+CREATE OR REPLACE TRIGGER tr_auditar_granulos AFTER INSERT OR UPDATE OR DELETE ON hechos_hipotesis
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_usuario_alta AFTER INSERT ON usuario
+CREATE OR REPLACE TRIGGER tr_auditar_usuario_alta AFTER INSERT ON usuario
     FOR EACH ROW EXECUTE FUNCTION fn_auditar();
-CREATE TRIGGER tr_auditar_usuario_rol AFTER UPDATE OF rol, activo ON usuario
+CREATE OR REPLACE TRIGGER tr_auditar_usuario_rol AFTER UPDATE OF rol, activo ON usuario
     FOR EACH ROW WHEN (OLD.rol IS DISTINCT FROM NEW.rol OR OLD.activo IS DISTINCT FROM NEW.activo)
     EXECUTE FUNCTION fn_auditar();
 
@@ -394,7 +398,7 @@ CREATE TRIGGER tr_auditar_usuario_rol AFTER UPDATE OF rol, activo ON usuario
 -- Protección de la administración: nadie cambia su propio rol ni se
 -- desactiva, y siempre queda al menos un administrador activo
 -- ---------------------------------------------------------------------
-CREATE FUNCTION fn_proteger_administracion() RETURNS TRIGGER
+CREATE OR REPLACE FUNCTION fn_proteger_administracion() RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = se, pg_temp
 AS $$
 BEGIN
@@ -413,8 +417,45 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER tr_proteger_administracion BEFORE UPDATE OF rol, activo ON usuario
+CREATE OR REPLACE TRIGGER tr_proteger_administracion BEFORE UPDATE OF rol, activo ON usuario
     FOR EACH ROW EXECUTE FUNCTION fn_proteger_administracion();
+
+-- ---------------------------------------------------------------------
+-- Reglas de la consulta (la pregunta de cada respuesta se obtiene por el hecho)
+-- ---------------------------------------------------------------------
+-- Una sola respuesta por pregunta en cada consulta
+CREATE OR REPLACE FUNCTION fn_una_respuesta_por_pregunta() RETURNS TRIGGER
+LANGUAGE plpgsql SET search_path = se, pg_temp
+AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM consulta_hecho ch
+                 JOIN hechos previo ON previo.id_hecho = ch.id_hecho
+                 JOIN hechos nuevo  ON nuevo.id_hecho  = NEW.id_hecho
+                WHERE ch.id_consulta = NEW.id_consulta
+                  AND previo.id_pregunta = nuevo.id_pregunta) THEN
+        RAISE EXCEPTION 'Esa pregunta ya se respondió en esta consulta';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE OR REPLACE TRIGGER tr_una_respuesta_por_pregunta BEFORE INSERT ON consulta_hecho
+    FOR EACH ROW EXECUTE FUNCTION fn_una_respuesta_por_pregunta();
+
+-- La opinión del experto solo se registra sobre consultas terminadas
+CREATE OR REPLACE FUNCTION fn_opinion_sobre_terminada() RETURNS TRIGGER
+LANGUAGE plpgsql SET search_path = se, pg_temp
+AS $$
+BEGIN
+    IF NEW.tipo = 'validacion_experto'
+       AND NOT EXISTS (SELECT 1 FROM consulta WHERE id_consulta = NEW.id_consulta
+                                               AND estado = 'terminada') THEN
+        RAISE EXCEPTION 'Solo se pueden validar consultas terminadas';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE OR REPLACE TRIGGER tr_opinion_sobre_terminada BEFORE INSERT ON traza_inferencia
+    FOR EACH ROW EXECUTE FUNCTION fn_opinion_sobre_terminada();
 
 -- ---------------------------------------------------------------------
 -- Permisos de ejecución (PostgreSQL concede EXECUTE a PUBLIC por defecto)

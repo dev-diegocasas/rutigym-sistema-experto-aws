@@ -1,6 +1,5 @@
 """Verifica la base: 48 caminos del árbol, 720 combinaciones y 32 hipótesis alcanzables.
 Uso: python3 verificar_caminos.py local|aurora"""
-
 import itertools
 import os
 import ssl
@@ -46,8 +45,8 @@ class MotorPrototipo:
             "SELECT id_hipotesis, codigo, probabilidad_previa FROM hipotesis")}
         self.opciones = {}
         for idp, idh, valor in con.run(
-                "SELECT r.id_pregunta, r.id_hecho, he.valor FROM respuesta_pregunta r "
-                "JOIN hechos he ON he.id_hecho = r.id_hecho ORDER BY r.id_pregunta, r.orden"):
+                "SELECT he.id_pregunta, r.id_hecho, he.valor FROM respuesta_pregunta r "
+                "JOIN hechos he ON he.id_hecho = r.id_hecho ORDER BY he.id_pregunta, r.orden"):
             self.opciones.setdefault(idp, []).append((idh, valor))
 
     def granulos_de_pregunta(self, id_pregunta):
